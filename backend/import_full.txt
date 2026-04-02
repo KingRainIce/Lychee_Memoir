@@ -1,0 +1,57 @@
+﻿[ok] 20250906_娣卞ぇ鏂扮敓鍗冲皢寮€濮嬮€夎锛岃繖闂ㄩ噸瑕佺殑璇惧埆蹇樹簡鎻愬墠閫夛紒銆庢繁澶ц崝鐭ャ€?json -> fe669059-f7be-5f93-ae98-79929b0e9789
+python : Traceback (most recent call last):
+所在位置 C:\Users\Lenovo\AppData\Local\Temp\ps-script-171d3f8e-d41f-46e9-8349-6669bc56755f.ps1:92 字符: 37
++ ... ements.txt; python scripts/import_campus_articles_from_docx.py "../do ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "D:\vibecoding_project\娣卞ぇ璁板繂_SZU_Memoir\backend\scripts\import_campus_articles_from_docx.py", line 384, in <mod
+ule>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "D:\vibecoding_project\娣卞ぇ璁板繂_SZU_Memoir\backend\scripts\import_campus_articles_from_docx.py", line 375, in main
+    return import_folder(
+        folder,
+    ...<2 lines>...
+        force=args.force,
+    )
+  File "D:\vibecoding_project\娣卞ぇ璁板繂_SZU_Memoir\backend\scripts\import_campus_articles_from_docx.py", line 346, in impo
+rt_folder
+    index_campus_event(session, ev)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\vibecoding_project\娣卞ぇ璁板繂_SZU_Memoir\backend\app\services\rag_index.py", line 177, in index_campus_event
+    vectors = _embed_texts(client, emb_model, texts)
+  File "D:\vibecoding_project\娣卞ぇ璁板繂_SZU_Memoir\backend\app\services\rag_index.py", line 144, in _embed_texts
+    resp = client.embeddings.create(model=model, input=texts)
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python313\Lib\site-packages\openai\resources\embeddings.py", line
+ 124, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/embeddings",
+        ^^^^^^^^^^^^^^
+    ...<8 lines>...
+        cast_to=CreateEmbeddingResponse,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python313\Lib\site-packages\openai\_base_client.py", line 1280, i
+n post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python313\Lib\site-packages\openai\_base_client.py", line 957, in
+ request
+    return self._request(
+           ~~~~~~~~~~~~~^
+        cast_to=cast_to,
+        ^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        retries_taken=retries_taken,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python313\Lib\site-packages\openai\_base_client.py", line 1061, i
+n _request
+    raise self._make_status_error_from_response(err.response) from None
+openai.APIStatusError: Error code: 413 - {'code': 20042, 'message': 'input must have less than 512 tokens', 'data': Non
+e}

@@ -1,0 +1,25 @@
+﻿python : D:\vibecoding_project\深大记忆_SZU_Memoir\backend\scripts\import_campus_articles_from_docx.py:18: SyntaxWarning: i
+nvalid escape sequence '\d'
+所在位置 C:\Users\Lenovo\AppData\Local\Temp\ps-script-9044bdd6-db88-4bc6-b051-a139b5447163.ps1:92 字符: 37
++ ... ements.txt; python scripts/import_campus_articles_from_docx.py "../do ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (D:\vibecoding_p...e sequence '\d':String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  python scripts/import_campus_articles_from_docx.py "..\docs\全部文章"
+Traceback (most recent call last):
+  File "D:\vibecoding_project\深大记忆_SZU_Memoir\backend\scripts\import_campus_articles_from_docx.py", line 374, in <modul
+e>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "D:\vibecoding_project\深大记忆_SZU_Memoir\backend\scripts\import_campus_articles_from_docx.py", line 365, in main
+    return import_folder(
+        folder,
+    ...<2 lines>...
+        force=args.force,
+    )
+  File "D:\vibecoding_project\深大记忆_SZU_Memoir\backend\scripts\import_campus_articles_from_docx.py", line 303, in import
+_folder
+    print(f"[dry-run] would import {jpath.name} -> id={ev_id} {year}-{month:02d} \xab{title}\xbb")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'gbk' codec can't encode character '\xab' in position 119: illegal multibyte sequence
