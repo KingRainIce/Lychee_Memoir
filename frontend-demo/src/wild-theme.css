@@ -1,0 +1,376 @@
+/* 浅色狂野演示皮：奶油纸 + 贴纸色块 + 斜切版式（仅 body.theme-wild） */
+
+html.theme-wild {
+  color-scheme: light;
+}
+
+body.theme-wild {
+  --bg: #f2ebe2;
+  --surface: #f7f2ea;
+  --surface-raised: #fffefb;
+  --text: #1e1b17;
+  --text-muted: #6a635c;
+  --accent: #d81b6a;
+  --accent-hover: #b91659;
+  --accent-soft: rgba(216, 27, 106, 0.12);
+  --accent-glow: rgba(216, 27, 106, 0.32);
+  --on-accent: #fffefc;
+  --border: rgba(0, 122, 140, 0.22);
+  --border-strong: rgba(0, 122, 140, 0.42);
+  --danger: #c42b22;
+  --danger-soft: rgba(196, 43, 34, 0.12);
+  --wild-lime: #5f6f00;
+  --wild-cyan: #007a8c;
+  --wild-violet: #6d28d9;
+  --shadow-sm: 0 4px 20px rgba(216, 27, 106, 0.1);
+  --shadow-md: 0 8px 32px rgba(0, 122, 140, 0.08);
+  --shadow-lg: 0 20px 48px rgba(30, 27, 23, 0.08);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --duration: 0.22s;
+  --ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  font-family: 'Noto Sans SC', system-ui, sans-serif;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 90% 65% at 0% 0%, rgba(216, 27, 106, 0.09), transparent 52%),
+    radial-gradient(ellipse 75% 50% at 100% 5%, rgba(109, 40, 217, 0.06), transparent 48%),
+    radial-gradient(ellipse 85% 55% at 50% 100%, rgba(0, 122, 140, 0.07), transparent 42%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(30, 27, 23, 0.035) 3px,
+      rgba(30, 27, 23, 0.035) 6px
+    );
+  background-attachment: fixed;
+}
+
+body.theme-wild::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483000;
+  opacity: 0.055;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: wild-grain 0.4s steps(2) infinite;
+}
+
+@keyframes wild-grain {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-1%, 1%);
+  }
+  100% {
+    transform: translate(1%, -0.5%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.theme-wild::before {
+    animation: none;
+  }
+}
+
+@keyframes wild-title-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 2px 0 rgba(0, 122, 140, 0.35));
+    transform: rotate(-1.5deg) scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 3px 0 rgba(216, 27, 106, 0.45));
+    transform: rotate(1.5deg) scale(1.02);
+  }
+}
+
+body.theme-wild .top-bar {
+  background: linear-gradient(105deg, #fffefb 0%, #f5efe6 45%, #faf6ee 100%);
+  border-bottom: 3px solid var(--wild-cyan);
+  box-shadow:
+    0 4px 0 var(--accent),
+    0 10px 28px rgba(216, 27, 106, 0.12);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), 99% 100%, 0 100%);
+}
+
+body.theme-wild .top-bar__name {
+  font-family: 'Ma Shan Zheng', serif;
+  font-size: 2rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  text-shadow:
+    2px 2px 0 rgba(216, 27, 106, 0.35),
+    -1px -1px 0 rgba(0, 122, 140, 0.4);
+  animation: wild-title-pulse 3.5s ease-in-out infinite;
+}
+
+body.theme-wild .top-bar__mode {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.2em;
+  color: var(--wild-cyan);
+  border: 2px solid var(--wild-cyan);
+  border-radius: 0;
+  background: rgba(0, 122, 140, 0.06);
+  text-transform: uppercase;
+  font-size: 0.65rem;
+}
+
+body.theme-wild .top-bar__annotate {
+  font-family: 'Bebas Neue', 'Noto Sans SC', sans-serif;
+  border: 2px solid var(--wild-lime);
+  border-radius: 0;
+  background: rgba(95, 111, 0, 0.06);
+  color: var(--wild-lime);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  box-shadow: none;
+}
+
+body.theme-wild .top-bar__annotate:hover {
+  background: #c5d63c;
+  color: var(--text);
+  box-shadow: 4px 4px 0 rgba(216, 27, 106, 0.35);
+}
+
+body.theme-wild .top-bar__hint {
+  color: var(--text-muted);
+  text-shadow: none;
+}
+
+body.theme-wild .top-bar__select,
+body.theme-wild .top-bar__campus-select select {
+  border: 2px solid var(--border-strong);
+  border-radius: 0;
+  background: var(--surface-raised);
+  color: var(--text);
+  font-weight: 600;
+}
+
+body.theme-wild .top-bar__user {
+  color: var(--wild-cyan);
+  font-weight: 700;
+}
+
+body.theme-wild .map-stage {
+  background: #e8e2d9;
+  box-shadow: inset 0 0 80px rgba(216, 27, 106, 0.04);
+}
+
+body.theme-wild .timeline {
+  background: linear-gradient(180deg, #fffefb, #f3ece3);
+  border-top: 2px solid var(--accent);
+  box-shadow:
+    0 -5px 0 var(--wild-cyan),
+    0 -12px 36px rgba(30, 27, 23, 0.06);
+}
+
+body.theme-wild .timeline__title {
+  color: var(--wild-lime);
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.24em;
+}
+
+body.theme-wild .timeline__year {
+  font-family: 'Bebas Neue', sans-serif;
+  color: var(--wild-cyan);
+  text-shadow: none;
+}
+
+body.theme-wild .timeline__tick-cap {
+  background: rgba(30, 27, 23, 0.12);
+}
+
+body.theme-wild .timeline__tick--current .timeline__tick-cap {
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+
+body.theme-wild .ai-tab {
+  border-radius: 0;
+  clip-path: polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  font-family: 'Bebas Neue', 'Noto Sans SC', sans-serif;
+  letter-spacing: 0.28em;
+  background: linear-gradient(135deg, var(--accent), var(--wild-violet));
+  color: var(--on-accent);
+  box-shadow: -4px 4px 0 rgba(0, 122, 140, 0.35);
+}
+
+body.theme-wild .ai-panel {
+  background: linear-gradient(180deg, #fffefb 0%, #f5efe8 100%);
+  border-left: 3px solid var(--wild-cyan);
+  box-shadow: -8px 0 40px rgba(216, 27, 106, 0.1);
+}
+
+body.theme-wild .ai-panel__head h2 {
+  font-family: 'Ma Shan Zheng', serif;
+  font-size: 1.5rem;
+  color: var(--text);
+  text-shadow: 1px 1px 0 rgba(216, 27, 106, 0.25);
+}
+
+body.theme-wild .ai-bubble--assistant {
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  box-shadow: 0 2px 14px rgba(0, 122, 140, 0.06);
+}
+
+body.theme-wild .ai-panel__send {
+  border-radius: 0;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+body.theme-wild .sheet-backdrop {
+  background: rgba(22, 20, 28, 0.38);
+  backdrop-filter: blur(6px);
+}
+
+body.theme-wild .detail-sheet {
+  background: linear-gradient(165deg, #fffefb 0%, #f2ebe4 100%);
+  border: 2px solid var(--wild-cyan);
+  box-shadow:
+    0 0 0 3px var(--accent),
+    0 18px 48px rgba(30, 27, 23, 0.12);
+  border-radius: 0;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+}
+
+body.theme-wild .detail-sheet__kind {
+  font-family: 'Bebas Neue', sans-serif;
+  color: var(--accent-hover);
+  letter-spacing: 0.2em;
+}
+
+body.theme-wild .detail-sheet h2,
+body.theme-wild .detail-sheet__title {
+  font-family: 'Ma Shan Zheng', serif;
+  color: var(--text);
+}
+
+body.theme-wild .detail-sheet__close {
+  color: var(--wild-cyan);
+}
+
+body.theme-wild .map-bubble--alumni-post,
+body.theme-wild .image-map-bubble-layer .map-bubble--alumni-post {
+  border: 2px solid var(--accent);
+  background: var(--surface-raised);
+  box-shadow:
+    0 0 0 2px rgba(0, 122, 140, 0.45),
+    0 6px 20px rgba(216, 27, 106, 0.18);
+}
+
+body.theme-wild .map-bubble--campus-event {
+  border: 2px solid var(--wild-violet);
+  background: var(--surface-raised);
+  box-shadow: 0 4px 18px rgba(109, 40, 217, 0.15);
+}
+
+body.theme-wild .map-bubble:hover {
+  transform: scale(1.06) rotate(-0.5deg);
+}
+
+body.theme-wild .image-map-annotation-region {
+  outline: 1px dashed rgba(0, 122, 140, 0.45);
+}
+
+body.theme-wild .post-compose {
+  background: var(--surface-raised);
+  border: 2px dashed var(--accent);
+  border-radius: 0;
+}
+
+body.theme-wild .post-compose__input,
+body.theme-wild .post-compose__textarea {
+  border-radius: 0;
+  border-color: var(--border-strong);
+  background: #fffefb;
+  color: var(--text);
+}
+
+body.theme-wild .campus-wizard__card {
+  background: var(--surface-raised);
+  border: 2px solid var(--wild-cyan);
+  box-shadow: 6px 6px 0 rgba(216, 27, 106, 0.2);
+  border-radius: 0;
+}
+
+body.theme-wild .campus-wizard__title {
+  font-family: 'Ma Shan Zheng', serif;
+  font-size: 2rem;
+  color: var(--text);
+  text-shadow: 2px 2px 0 rgba(0, 122, 140, 0.2);
+}
+
+body.theme-wild .campus-wizard__submit {
+  border-radius: 0;
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  background: linear-gradient(90deg, var(--accent), var(--wild-violet));
+  border: none;
+  color: var(--on-accent);
+}
+
+body.theme-wild .annotate-bar {
+  background: linear-gradient(90deg, #fffefb, #ebe4da);
+  border-bottom: 2px solid var(--wild-cyan);
+}
+
+body.theme-wild .annotate-bar__title {
+  font-family: 'Ma Shan Zheng', serif;
+  color: var(--text);
+}
+
+body.theme-wild .auth-modal {
+  background: var(--surface-raised);
+  border: 2px solid var(--accent);
+  border-radius: 0;
+  box-shadow: 8px 8px 0 rgba(0, 122, 140, 0.2);
+}
+
+body.theme-wild .auth-modal__title {
+  font-family: 'Ma Shan Zheng', serif;
+  color: var(--text);
+}
+
+body.theme-wild .rag-card {
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  border-radius: 0;
+  box-shadow: 0 2px 12px rgba(30, 27, 23, 0.05);
+}
+
+body.theme-wild .rag-section__title {
+  font-family: 'Bebas Neue', sans-serif;
+  color: var(--wild-cyan);
+  letter-spacing: 0.15em;
+}
+
+body.theme-wild .image-campus-map__loading {
+  color: var(--accent-hover);
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  animation: wild-blink 1.2s step-end infinite;
+}
+
+@keyframes wild-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+body.theme-wild .detail-sheet__delete-btn {
+  border: 2px solid var(--danger);
+  background: var(--danger-soft);
+  color: #8b2218;
+  border-radius: 0;
+}
