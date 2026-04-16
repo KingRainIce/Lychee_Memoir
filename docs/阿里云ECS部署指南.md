@@ -91,7 +91,7 @@ sudo rsync -av --delete /opt/Lychee_Memoir/frontend/dist/ /var/www/szu-memoir/
 
 ## 5. 配置 Nginx（含 `/api` 与 `/api/ws` 反代）
 
-复制模板并替换你的域名：
+复制模板并替换你的域名（把下面命令里的 `example.com` 改成你的真实域名）：
 
 ```bash
 sudo cp /opt/Lychee_Memoir/deploy/nginx/szu-memoir.conf /etc/nginx/sites-available/szu-memoir.conf
@@ -103,6 +103,8 @@ sudo systemctl reload nginx
 ```
 
 ## 6. 配置 HTTPS（Certbot）
+
+同样把 `example.com` 改成你的真实域名：
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
