@@ -13,6 +13,12 @@
 
 详见各子目录说明；前端需 `npm install` 后 `npm run dev`。
 
+## 生产部署（阿里云 ECS）
+
+- 部署文档：[`docs/阿里云ECS部署指南.md`](docs/阿里云ECS部署指南.md)
+- Nginx 模板：[`deploy/nginx/szu-memoir.conf`](deploy/nginx/szu-memoir.conf)
+- 生产环境变量示例：[`/.env.production.example`](.env.production.example)
+
 ## 许可证
 
 按仓库约定。
