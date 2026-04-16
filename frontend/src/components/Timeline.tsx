@@ -121,7 +121,15 @@ export function Timeline({ monthIndex, onMonthIndexChange, isLatest }: TimelineP
             {!isDragging && isLatest ? ' · 最新帖子' : ''}
           </span>
         </div>
-        <div className="timeline__viewport">
+        <div
+          className="timeline__viewport"
+          style={
+            {
+              '--timeline-tick-step': `${TICK_STEP}px`,
+              '--timeline-tick-half': `${TICK_STEP / 2}px`,
+            } as React.CSSProperties
+          }
+        >
           <div className="timeline__needle" aria-hidden />
           <div
             className={`timeline__drag-pill${isDragging ? ' timeline__drag-pill--visible' : ''}`}
@@ -155,7 +163,16 @@ export function Timeline({ monthIndex, onMonthIndexChange, isLatest }: TimelineP
               const isCurrent = i === monthIndex
               const isNow = isLatestTick && isCurrent
               return (
-                <div key={i} className="timeline__tick-wrap" style={{ width: TICK_STEP }}>
+                <div
+                  key={i}
+                  className="timeline__tick-wrap"
+                  style={
+                    {
+                      width: TICK_STEP,
+                      ['--tick-phase' as string]: `${(i % 32) * 0.11}s`,
+                    } as React.CSSProperties
+                  }
+                >
                   <button
                     type="button"
                     className={[

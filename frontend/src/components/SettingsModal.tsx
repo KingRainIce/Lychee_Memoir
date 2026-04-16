@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import type { AlumniPost } from '../data/mockData'
 import {
   fetchAiConfig,
   fetchAiDiagnostics,
+  fetchMyFavoritedPosts,
+  fetchMyLikedPosts,
   fetchPendingPosts,
   moderatePost,
   patchMe,
@@ -11,29 +14,35 @@ import {
   type ApiPostPending,
   type UserMe,
 } from '../lib/api'
+import { User, Heart, Star, Settings, Sparkles, Shield, PartyPopper, X, Check } from 'lucide-react'
 
-type TabId = 'profile' | 'general' | 'ai' | 'audit'
+type TabId = 'profile' | 'general' | 'liked' | 'favorited' | 'ai' | 'audit'
 
 type SettingsModalProps = {
   open: boolean
   user: UserMe | null
+  campusId: string
   onClose: () => void
   onUpdated: (u: UserMe) => void
   onAuditChanged: () => void
+  onOpenSavedPost?: (post: AlumniPost) => void
 }
 
 type TabDef = {
   id: TabId
   label: string
-  icon: string
+  icon: React.ReactNode
   adminOnly?: boolean
+  requireLogin?: boolean
 }
 
 const TABS: TabDef[] = [
-  { id: 'profile', label: '个人资料', icon: '👤' },
-  { id: 'general', label: '通用偏好', icon: '⚙️' },
-  { id: 'ai', label: '模型 API 配置', icon: '✨', adminOnly: true },
-  { id: 'audit', label: '待审核内容', icon: '🛡️', adminOnly: true },
+  { id: 'profile', label: '个人资料', icon: <User size={16} />, requireLogin: true },
+  { id: 'liked', label: '点赞的帖子', icon: <Heart size={16} />, requireLogin: true },
+  { id: 'favorited', label: '收藏的帖子', icon: <Star size={16} />, requireLogin: true },
+  { id: 'general', label: '通用偏好', icon: <Settings size={16} /> },
+  { id: 'ai', label: '模型 API 配置', icon: <Sparkles size={16} />, adminOnly: true },
+  { id: 'audit', label: '待审核内容', icon: <Shield size={16} />, adminOnly: true },
 ]
 
 /* ──────────────────────────────────────────────────────────── */
@@ -162,7 +171,7 @@ function ProfileTab({ user, onUpdated }: { user: UserMe; onUpdated: (u: UserMe) 
       </div>
 
       {err && <div className="settings-alert settings-alert--danger">{err}</div>}
-      {success && <div className="settings-alert settings-alert--success">✓ 资料保存成功</div>}
+      {success && <div className="settings-alert settings-alert--success"><Check size={16} style={{ display: 'inline', verticalAlign: '-3px' }}/> 资料保存成功</div>}
 
       <div className="settings-actions">
         <button
@@ -208,7 +217,7 @@ function formatAiDiag(d: AiDiagnostics): string {
     d.key_source === 'env' ? '环境变量' : d.key_source === 'database' ? '数据库' : '未配置'
   const n = d.effective_key_char_count ?? 0
   return (
-    `密钥状态：${d.has_api_key ? '已加载 🟢' : '未加载 🔴'}（来源：${src}，有效长度：${n}） | ` +
+    `密钥状态：${d.has_api_key ? '已加载 (就绪)' : '未加载 (异常)'}（来源：${src}，有效长度：${n}） | ` +
     `API Base：${d.effective_base_url} | ` +
     `网络设置：读超时 ${d.http_timeout_seconds}s，重试 ${d.max_retries} 次。`
   )
@@ -336,6 +345,73 @@ function AiConfigTab() {
   )
 }
 
+function SavedPostsTab({
+  kind,
+  campusId,
+  onPick,
+  onClose,
+}: {
+  kind: 'liked' | 'favorited'
+  campusId: string
+  onPick?: (post: AlumniPost) => void
+  onClose: () => void
+}) {
+  const [list, setList] = useState<AlumniPost[]>([])
+  const [err, setErr] = useState<string | null>(null)
+
+  const load = () => {
+    void (async () => {
+      try {
+        setErr(null)
+        const rows =
+          kind === 'liked' ? await fetchMyLikedPosts(campusId) : await fetchMyFavoritedPosts(campusId)
+        setList(rows)
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : '加载失败')
+      }
+    })()
+  }
+
+  useEffect(() => {
+    load()
+  }, [kind, campusId])
+
+  const title = kind === 'liked' ? '我点赞的帖子' : '我收藏的帖子'
+
+  return (
+    <div className="settings-tab-content">
+      <h2 className="settings-tab-title">{title}</h2>
+      <p className="settings-desc">仅展示仍通过审核的帖子；点击可在地图上查看详情。</p>
+      {err && <div className="settings-alert settings-alert--danger">{err}</div>}
+      <ul className="settings-audit-list">
+        {list.length === 0 ? (
+          <div className="settings-audit-empty">暂无记录</div>
+        ) : null}
+        {list.map((p) => (
+          <li key={p.id} className="settings-audit-item">
+            <button
+              type="button"
+              className="settings-saved-post-btn"
+              onClick={() => {
+                onPick?.(p)
+                onClose()
+              }}
+            >
+              <div className="settings-audit-meta">
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <User size={14} /> {p.author}
+                </span>
+                <span style={{ color: 'var(--text-muted)' }}>{p.excerpt?.slice(0, 80) || '（无摘要）'}</span>
+              </div>
+              <div className="settings-audit-body">{p.body?.slice(0, 200) || ''}</div>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function AuditTab({ onChanged }: { onChanged: () => void }) {
   const [list, setList] = useState<ApiPostPending[]>([])
   const [err, setErr] = useState<string | null>(null)
@@ -367,13 +443,19 @@ function AuditTab({ onChanged }: { onChanged: () => void }) {
 
       <ul className="settings-audit-list">
         {list.length === 0 ? (
-          <div className="settings-audit-empty">🎉 所有事务已清空，当前平安无事</div>
+          <div className="settings-audit-empty">
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'center' }}>
+              <PartyPopper size={16} /> 所有事务已清空，当前平安无事
+            </span>
+          </div>
         ) : null}
         
         {list.map((p) => (
           <li key={p.id} className="settings-audit-item">
             <div className="settings-audit-meta">
-              <span>👤 {p.author}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <User size={14} /> {p.author}
+              </span>
               <span style={{ color: 'var(--text-muted)' }}>{p.created_at}</span>
             </div>
             <div className="settings-audit-body">{p.body}</div>
@@ -415,7 +497,15 @@ function AuditTab({ onChanged }: { onChanged: () => void }) {
 /* Main Modal Shell */
 /* ──────────────────────────────────────────────────────────── */
 
-export function SettingsModal({ open, user, onClose, onUpdated, onAuditChanged }: SettingsModalProps) {
+export function SettingsModal({
+  open,
+  user,
+  campusId,
+  onClose,
+  onUpdated,
+  onAuditChanged,
+  onOpenSavedPost,
+}: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('profile')
 
   // Reset tab on close to avoid showing admin tab if logged out/unauthorized
@@ -427,11 +517,15 @@ export function SettingsModal({ open, user, onClose, onUpdated, onAuditChanged }
 
   // Ensure active tab doesn't stick to an admin tab if logged in user isn't admin
   const isUserAdmin = user?.is_admin === true
-  
-  const visibleTabs = TABS.filter((t) => !t.adminOnly || isUserAdmin)
+
+  const visibleTabs = TABS.filter((t) => {
+    if (t.adminOnly && !isUserAdmin) return false
+    if (t.requireLogin && !user) return false
+    return true
+  })
   if (!visibleTabs.some((t) => t.id === activeTab)) {
-    // Failsafe auto-switch if rendering an invisible tab
-    setTimeout(() => setActiveTab('profile'), 0)
+    const fallback = visibleTabs[0]?.id ?? 'general'
+    setTimeout(() => setActiveTab(fallback), 0)
     return null
   }
 
@@ -462,7 +556,7 @@ export function SettingsModal({ open, user, onClose, onUpdated, onAuditChanged }
         {/* 右侧展示区 */}
         <div className="settings-main">
           <button type="button" className="settings-main__close" onClick={onClose} title="关闭 (Esc)">
-            ✕
+            <X size={20} />
           </button>
           
           <div className="settings-main__scroll">
@@ -473,6 +567,17 @@ export function SettingsModal({ open, user, onClose, onUpdated, onAuditChanged }
             ) : null}
 
             {user && activeTab === 'profile' && <ProfileTab user={user} onUpdated={onUpdated} />}
+            {user && activeTab === 'liked' && (
+              <SavedPostsTab kind="liked" campusId={campusId} onPick={onOpenSavedPost} onClose={onClose} />
+            )}
+            {user && activeTab === 'favorited' && (
+              <SavedPostsTab
+                kind="favorited"
+                campusId={campusId}
+                onPick={onOpenSavedPost}
+                onClose={onClose}
+              />
+            )}
             {activeTab === 'general' && <GeneralTab />}
             {isUserAdmin && activeTab === 'ai' && <AiConfigTab />}
             {isUserAdmin && activeTab === 'audit' && <AuditTab onChanged={onAuditChanged} />}

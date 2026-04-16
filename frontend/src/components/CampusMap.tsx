@@ -14,6 +14,8 @@ type CampusMapProps = {
   campusId: string
   bubbles: MapBubble[]
   onBubbleClick: (item: MapBubble) => void
+  /** 地图 style 与图层就绪（用于首屏揭示） */
+  onMapReady?: () => void
 }
 
 /** 开放街图栅格底图（开发演示用；正式环境请换合规商用瓦片或自托管） */
@@ -57,7 +59,7 @@ function lngLatOf(item: MapBubble): { lng: number; lat: number } {
   return { lng: p0.lng, lat: p0.lat }
 }
 
-export function CampusMap({ campusId, bubbles, onBubbleClick }: CampusMapProps) {
+export function CampusMap({ campusId, bubbles, onBubbleClick, onMapReady }: CampusMapProps) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<Map | null>(null)
   const markersRef = useRef<{ marker: maplibregl.Marker; cleanup?: () => void }[]>([])
@@ -115,6 +117,7 @@ export function CampusMap({ campusId, bubbles, onBubbleClick }: CampusMapProps) 
           'line-opacity': 0.92,
         },
       })
+      onMapReady?.()
     })
 
     mapRef.current = map
@@ -124,7 +127,7 @@ export function CampusMap({ campusId, bubbles, onBubbleClick }: CampusMapProps) 
       map.remove()
       mapRef.current = null
     }
-  }, [campusId, clearMarkers])
+  }, [campusId, clearMarkers, onMapReady])
 
   useEffect(() => {
     const map = mapRef.current

@@ -73,6 +73,10 @@ export type ApiPost = {
   address: string
   status: string
   created_at: string
+  like_count?: number
+  comment_count?: number
+  liked_by_me?: boolean
+  favorited_by_me?: boolean
 }
 
 export function mapEvent(r: ApiEvent): CampusEvent {
@@ -109,17 +113,50 @@ export function mapPost(r: ApiPost): AlumniPost {
     imageUrl: r.image_url ?? undefined,
     address: r.address,
     createdAt: r.created_at,
+    likeCount: r.like_count ?? 0,
+    commentCount: r.comment_count ?? 0,
+    liked: r.liked_by_me ?? false,
+    favorited: r.favorited_by_me ?? false,
   }
 }
 
-export async function fetchEvents(campusId: string, asOfYear: number, asOfMonth: number) {
+const EVENTS_DEFAULT_LIMIT = 50
+
+export async function fetchEvents(
+  campusId: string,
+  asOfYear: number,
+  asOfMonth: number,
+  opts?: { limit?: number; offset?: number },
+): Promise<{ events: CampusEvent[]; total: number }> {
+  const limit = opts?.limit ?? EVENTS_DEFAULT_LIMIT
+  const offset = opts?.offset ?? 0
   const q = new URLSearchParams({
     campus_id: campusId,
     as_of_year: String(asOfYear),
     as_of_month: String(asOfMonth),
+    limit: String(limit),
+    offset: String(offset),
   })
-  const raw = (await apiFetch(`/api/events?${q}`)) as ApiEvent[]
-  return raw.map(mapEvent)
+  const path = `/api/events?${q}`
+  const headers = new Headers()
+  const token = getToken()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  const res = await fetch(path, { headers })
+  if (!res.ok) {
+    let detail = res.statusText
+    try {
+      const j = (await res.json()) as { detail?: string | unknown }
+      if (typeof j.detail === 'string') detail = j.detail
+      else if (Array.isArray(j.detail)) detail = JSON.stringify(j.detail)
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail || `HTTP ${res.status}`)
+  }
+  const raw = (await res.json()) as ApiEvent[]
+  const totalHdr = res.headers.get('X-Total-Count')
+  const total = totalHdr != null ? parseInt(totalHdr, 10) : raw.length
+  return { events: raw.map(mapEvent), total: Number.isFinite(total) ? total : raw.length }
 }
 
 export async function fetchPosts(campusId: string, sinceISO: string) {
@@ -187,6 +224,54 @@ export async function createPost(body: {
     method: 'POST',
     body: JSON.stringify(body),
   })
+}
+
+export async function likePost(postId: string) {
+  await apiFetch(`/api/posts/${postId}/like`, { method: 'POST' })
+}
+
+export async function unlikePost(postId: string) {
+  await apiFetch(`/api/posts/${postId}/like`, { method: 'DELETE' })
+}
+
+export async function favoritePost(postId: string) {
+  await apiFetch(`/api/posts/${postId}/favorite`, { method: 'POST' })
+}
+
+export async function unfavoritePost(postId: string) {
+  await apiFetch(`/api/posts/${postId}/favorite`, { method: 'DELETE' })
+}
+
+export type ApiComment = {
+  id: string
+  author: string
+  body: string
+  created_at: string
+  replies: ApiComment[]
+}
+
+export async function fetchPostComments(postId: string): Promise<ApiComment[]> {
+  const r = (await apiFetch(`/api/posts/${postId}/comments`)) as { items: ApiComment[] }
+  return r.items ?? []
+}
+
+export async function createPostComment(postId: string, body: string, parentId?: string | null) {
+  await apiFetch(`/api/posts/${postId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ body, parent_id: parentId ?? null }),
+  })
+}
+
+export async function fetchMyLikedPosts(campusId?: string) {
+  const q = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  const raw = (await apiFetch(`/api/posts/me/liked${q}`)) as ApiPost[]
+  return raw.map(mapPost)
+}
+
+export async function fetchMyFavoritedPosts(campusId?: string) {
+  const q = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  const raw = (await apiFetch(`/api/posts/me/favorited${q}`)) as ApiPost[]
+  return raw.map(mapPost)
 }
 
 export async function uploadPostImage(file: File): Promise<string> {

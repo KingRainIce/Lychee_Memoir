@@ -38,16 +38,24 @@ export function appendCachedLatestPost(campusId: string, since: string, post: Al
   saveCachedLatestPosts(campusId, since, [post, ...cur])
 }
 
+export type CachedHistoryEvents = {
+  events: CampusEvent[]
+  /** 该年月下符合条件的总条数（与 API X-Total-Count 一致） */
+  total: number
+}
+
 export function loadCachedHistoryEvents(
   campusId: string,
   year: number,
   month: number,
-): CampusEvent[] | null {
+): CachedHistoryEvents | null {
   try {
     const raw = localStorage.getItem(histKey(campusId, year, month))
     if (!raw) return null
-    const j = JSON.parse(raw) as { events?: CampusEvent[] }
-    return Array.isArray(j.events) ? j.events : null
+    const j = JSON.parse(raw) as { events?: CampusEvent[]; total?: number }
+    if (!Array.isArray(j.events)) return null
+    const total = typeof j.total === 'number' ? j.total : j.events.length
+    return { events: j.events, total }
   } catch {
     return null
   }
@@ -57,10 +65,10 @@ export function saveCachedHistoryEvents(
   campusId: string,
   year: number,
   month: number,
-  events: CampusEvent[],
+  payload: CachedHistoryEvents,
 ): void {
   try {
-    localStorage.setItem(histKey(campusId, year, month), JSON.stringify({ events }))
+    localStorage.setItem(histKey(campusId, year, month), JSON.stringify(payload))
   } catch {
     /* quota */
   }

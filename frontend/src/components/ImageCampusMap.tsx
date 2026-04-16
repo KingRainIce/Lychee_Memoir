@@ -18,6 +18,8 @@ type ImageCampusMapProps = {
   onMapClick?: (placeId: string, placeName: string, nx: number, ny: number) => void
   /** 脉冲定位标记（点击记忆流地点后显示，3 秒自动清除） */
   highlightMarker?: { nx: number; ny: number } | null
+  /** 底图解码完成（用于首屏云层揭示） */
+  onBasemapReady?: (ready: boolean) => void
 }
 
 function nxNyOf(b: ImageMapBubble): { nx: number; ny: number } | null {
@@ -130,6 +132,7 @@ export function ImageCampusMap({
   onBubbleClick,
   onMapClick,
   highlightMarker,
+  onBasemapReady,
 }: ImageCampusMapProps) {
   const [imgSrc, setImgSrc] = useState(imageUrl)
   const [imageLoaded, setImageLoaded] = useState(false)
@@ -167,6 +170,10 @@ export function ImageCampusMap({
   useEffect(() => {
     setImageLoaded(false)
   }, [imgSrc])
+
+  useEffect(() => {
+    onBasemapReady?.(imageLoaded)
+  }, [imageLoaded, onBasemapReady])
 
   return (
     <div className="image-campus-map">

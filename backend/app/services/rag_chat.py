@@ -200,6 +200,7 @@ def _to_citation(session: Session, c: Any, is_event: bool, dist: float) -> RagCi
     title = c.meta.get("title") if is_event else _load_post_author(session, sid)
     if not is_event and not title:
         title = "帖子"
+    url = c.meta.get("url") # 获取元数据中的原文链接
     score = round(1.0 / (1.0 + dist), 4)
     raw = (c.content or "").strip()
     if len(raw) > MAX_SLICE_CHARS:
@@ -209,6 +210,7 @@ def _to_citation(session: Session, c: Any, is_event: bool, dist: float) -> RagCi
         source_type="event" if is_event else "post",
         source_id=str(sid),
         title=str(title),
+        url=url, # 传递至前端显示
         snippet=raw,
         score=score,
         image_url=img,

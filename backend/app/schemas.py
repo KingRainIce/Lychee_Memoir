@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from typing import Annotated, Any, Literal, Optional
@@ -112,8 +114,29 @@ class AlumniPostRead(BaseModel):
     address: str
     status: PostStatus
     created_at: datetime
+    like_count: int = 0
+    comment_count: int = 0
+    liked_by_me: bool = False
+    favorited_by_me: bool = False
 
     model_config = {"from_attributes": True}
+
+
+class PostCommentRead(BaseModel):
+    id: uuid.UUID
+    author: str
+    body: str
+    created_at: datetime
+    replies: list[PostCommentRead] = Field(default_factory=list)
+
+
+class PostCommentsResponse(BaseModel):
+    items: list[PostCommentRead]
+
+
+class PostCommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=8000)
+    parent_id: Optional[uuid.UUID] = None
 
 
 class AlumniPostCreate(BaseModel):
@@ -156,6 +179,7 @@ class RagCitation(BaseModel):
     source_type: str
     source_id: str
     title: str
+    url: Optional[str] = None # 原文跳转链接
     snippet: str = Field(description="检索块原文，供卡片展示")
     score: float
     image_url: Optional[str] = None

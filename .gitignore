@@ -12,6 +12,7 @@ venv/
 
 # IDE / local
 .claude/
+.cursor/
 *.zip
 
 # OS

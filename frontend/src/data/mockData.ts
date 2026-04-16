@@ -35,6 +35,10 @@ export type AlumniPost = {
   address: string
   /** ISO8601，展示到秒 */
   createdAt?: string
+  likeCount?: number
+  commentCount?: number
+  liked?: boolean
+  favorited?: boolean
 }
 
 /** 演示用校园事件（坐标落在粤海示意范围内） */

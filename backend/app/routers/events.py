@@ -1,7 +1,7 @@
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import tuple_
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import and_, func, tuple_
 from sqlmodel import Session, select
 
 from app.deps import get_admin_user, get_db
@@ -15,6 +15,7 @@ router = APIRouter(prefix="/events", tags=["events"])
 
 @router.get("", response_model=list[CampusEventRead])
 def list_events(
+    response: Response,
     session: Annotated[Session, Depends(get_db)],
     campus_id: str = Query(...),
     as_of_year: Optional[int] = Query(None, ge=1900, le=2100),
@@ -23,20 +24,31 @@ def list_events(
         None,
         description="已废弃：请改用 as_of_year + as_of_month（当月及以前累计）",
     ),
+    limit: int = Query(50, ge=1, le=200, description="单页条数，默认 50"),
+    offset: int = Query(0, ge=0, description="分页偏移"),
 ) -> list[CampusEvent]:
-    stmt = select(CampusEvent).where(CampusEvent.campus_id == campus_id)
+    filters = [CampusEvent.campus_id == campus_id]
 
     if year_lte is not None and (as_of_year is None or as_of_month is None):
-        stmt = stmt.where(CampusEvent.year <= year_lte)
+        filters.append(CampusEvent.year <= year_lte)
     elif as_of_year is not None and as_of_month is not None:
-        # 累计：业务时间 (year, month) 不晚于所选年-月
-        stmt = stmt.where(
+        filters.append(
             tuple_(CampusEvent.year, CampusEvent.month) <= tuple_(as_of_year, as_of_month),
         )
     elif as_of_year is not None or as_of_month is not None:
         raise HTTPException(status_code=400, detail="as_of_year 与 as_of_month 须同时提供")
 
-    stmt = stmt.order_by(CampusEvent.year, CampusEvent.month)
+    where_clause = and_(*filters)
+    total = session.exec(select(func.count(CampusEvent.id)).where(where_clause)).one()
+    response.headers["X-Total-Count"] = str(int(total))
+
+    stmt = (
+        select(CampusEvent)
+        .where(where_clause)
+        .order_by(CampusEvent.year, CampusEvent.month)
+        .offset(offset)
+        .limit(limit)
+    )
     return list(session.exec(stmt).all())
 
 

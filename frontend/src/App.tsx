@@ -9,6 +9,7 @@ import type { DetailItem } from './components/DetailSheet'
 import { DetailSheet } from './components/DetailSheet'
 import { FirstCampusWizard } from './components/FirstCampusWizard'
 import { ImageCampusMap, type ImageMapBubble } from './components/ImageCampusMap'
+import { MapRevealOverlay } from './components/MapRevealOverlay'
 import { MemoryDrawer } from './components/MemoryDrawer'
 import { SettingsModal } from './components/SettingsModal'
 import { Timeline, TIMELINE_LATEST_INDEX } from './components/Timeline'
@@ -50,7 +51,7 @@ export function App() {
   const [needsCampusGate, setNeedsCampusGate] = useState(() => !hasCompletedCampusOnboarding())
   const [campusId, setCampusId] = useState(defaultCampusId)
   const [timelineIndex, setTimelineIndex] = useState(TIMELINE_LATEST_INDEX)
-  const [aiOpen, setAiOpen] = useState(true)
+  const [aiOpen, setAiOpen] = useState(false)
   const [detail, setDetail] = useState<DetailItem | null>(null)
   const [screen, setScreen] = useState<'map' | 'annotate'>('map')
   const [planarBasemapPick, setPlanarBasemapPickState] = useState<PlanarBasemapPick>(() =>
@@ -67,8 +68,17 @@ export function App() {
   const [highlightMarker, setHighlightMarker] = useState<{ nx: number; ny: number } | null>(null)
 
   const [events, setEvents] = useState<CampusEvent[]>([])
+  const [eventsTotal, setEventsTotal] = useState(0)
+  const [eventsLoadingMore, setEventsLoadingMore] = useState(false)
   const [posts, setPosts] = useState<AlumniPost[]>([])
   const [loadErr, setLoadErr] = useState<string | null>(null)
+
+  const timelineIndexRef = useRef(timelineIndex)
+  timelineIndexRef.current = timelineIndex
+  const eventsForMoreRef = useRef({ list: [] as CampusEvent[], total: 0 })
+  useEffect(() => {
+    eventsForMoreRef.current = { list: events, total: eventsTotal }
+  }, [events, eventsTotal])
 
   const [draftNx, setDraftNx] = useState<number | null>(null)
   const [draftNy, setDraftNy] = useState<number | null>(null)
@@ -80,6 +90,11 @@ export function App() {
   const postsSinceRef = useRef(getOrInitPostWindowStartISO())
   const campusIdRef = useRef(campusId)
   campusIdRef.current = campusId
+
+  const mapRevealPlayedRef = useRef(false)
+  const [basemapReady, setBasemapReady] = useState(false)
+  const [dataReady, setDataReady] = useState(false)
+  const [revealPhase, setRevealPhase] = useState<'loading' | 'revealing' | 'hidden'>('loading')
 
   const isLatest = timelineIndex >= TIMELINE_LATEST_INDEX
 
@@ -110,13 +125,52 @@ export function App() {
     })
   }, [])
 
+  const loadMoreHistoryEvents = useCallback(async () => {
+    if (timelineIndexRef.current >= TIMELINE_LATEST_INDEX) return
+    const idx = timelineIndexRef.current
+    const { year, month } = historicalIndexToYearMonth(idx)
+    const cid = campusIdRef.current
+    const { list, total } = eventsForMoreRef.current
+    if (list.length >= total) return
+    setEventsLoadingMore(true)
+    try {
+      const { events: next, total: newTotal } = await fetchEvents(cid, year, month, {
+        limit: 50,
+        offset: list.length,
+      })
+      if (timelineIndexRef.current !== idx || campusIdRef.current !== cid) return
+      const ann = loadLocalAnnotations(resolvePlanarBasemapUrl(cid, 'campus')).items
+      setEventsTotal(newTotal)
+      setEvents([...list, ...hydrateEventsWithPlaces(next, ann, cid)])
+    } catch {
+      /* ignore */
+    } finally {
+      setEventsLoadingMore(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (screen === 'map' && mapRevealPlayedRef.current) {
+      setRevealPhase('hidden')
+    }
+  }, [screen])
+
+  useEffect(() => {
+    if (BASEMAP_MODE === 'geo') {
+      setBasemapReady(false)
+    }
+  }, [campusId])
+
   useEffect(() => {
     let cancelled = false
     const cid = campusId
     setLoadErr(null)
+    setDataReady(false)
     const annFor = (c: string) => loadLocalAnnotations(resolvePlanarBasemapUrl(c, 'campus')).items
 
     if (isLatest) {
+      setEvents([])
+      setEventsTotal(0)
       const since = postsSinceRef.current
       const cached = loadCachedLatestPosts(cid, since)
       if (cached !== null) {
@@ -128,9 +182,11 @@ export function App() {
       const { year, month } = historicalIndexToYearMonth(timelineIndex)
       const cached = loadCachedHistoryEvents(cid, year, month)
       if (cached !== null) {
-        setEvents(hydrateEventsWithPlaces(cached, annFor(cid), cid))
+        setEvents(hydrateEventsWithPlaces(cached.events, annFor(cid), cid))
+        setEventsTotal(cached.total)
       } else {
         setEvents([])
+        setEventsTotal(0)
       }
     }
 
@@ -145,15 +201,20 @@ export function App() {
           setPosts(hydratePostsWithPlaces(p, ann, cid))
         } else {
           const { year, month } = historicalIndexToYearMonth(timelineIndex)
-          const e = await fetchEvents(cid, year, month)
+          const { events: e, total } = await fetchEvents(cid, year, month)
           if (cancelled || campusIdRef.current !== cid) return
-          saveCachedHistoryEvents(cid, year, month, e)
+          saveCachedHistoryEvents(cid, year, month, { events: e, total })
           const ann = loadLocalAnnotations(resolvePlanarBasemapUrl(cid, 'campus')).items
+          setEventsTotal(total)
           setEvents(hydrateEventsWithPlaces(e, ann, cid))
         }
       } catch (err) {
         if (!cancelled && campusIdRef.current === cid) {
           setLoadErr(err instanceof Error ? err.message : '加载失败')
+        }
+      } finally {
+        if (!cancelled && campusIdRef.current === cid) {
+          setDataReady(true)
         }
       }
     })()
@@ -161,6 +222,52 @@ export function App() {
       cancelled = true
     }
   }, [campusId, timelineIndex, isLatest])
+
+  const onBasemapReady = useCallback((ready: boolean) => {
+    setBasemapReady(ready)
+    if (!ready && !mapRevealPlayedRef.current) {
+      setRevealPhase('loading')
+    }
+  }, [])
+
+  const onGeoMapReady = useCallback(() => {
+    setBasemapReady(true)
+  }, [])
+
+  useEffect(() => {
+    if (mapRevealPlayedRef.current) {
+      setRevealPhase('hidden')
+      return
+    }
+    if (!basemapReady || !dataReady) return
+
+    const reduced =
+      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const minCloudMs = reduced ? 400 : 1000
+    const zoomMs = reduced ? 520 : 2000
+
+    let cancelled = false
+    const timeouts: number[] = []
+
+    timeouts.push(
+      window.setTimeout(() => {
+        if (cancelled) return
+        setRevealPhase('revealing')
+        timeouts.push(
+          window.setTimeout(() => {
+            if (cancelled) return
+            setRevealPhase('hidden')
+            mapRevealPlayedRef.current = true
+          }, zoomMs),
+        )
+      }, minCloudMs),
+    )
+
+    return () => {
+      cancelled = true
+      timeouts.forEach((id) => window.clearTimeout(id))
+    }
+  }, [basemapReady, dataReady])
 
   useEffect(() => {
     if (!isLatest) {
@@ -331,17 +438,37 @@ export function App() {
       </header>
 
       <main className="map-stage">
-        {BASEMAP_MODE === 'image' ? (
-          <ImageCampusMap
-            imageUrl={basemapUrl}
-            bubbles={bubbles as ImageMapBubble[]}
-            onBubbleClick={onBubbleClick}
-            onMapClick={isLatest && user ? onMapPick : undefined}
-            highlightMarker={highlightMarker}
-          />
-        ) : (
-          <CampusMap campusId={campusId} bubbles={bubbles as MapBubble[]} onBubbleClick={onBubbleClick} />
-        )}
+        <div
+          className={
+            'map-stage__reveal-inner ' +
+            (revealPhase === 'loading' ? 'map-stage__reveal-inner--prep ' : '') +
+            (revealPhase === 'revealing' ? 'map-stage__reveal-inner--zoom ' : '') +
+            (revealPhase === 'hidden' ? 'map-stage__reveal-inner--done' : '')
+          }
+        >
+          {BASEMAP_MODE === 'image' ? (
+            <ImageCampusMap
+              imageUrl={basemapUrl}
+              bubbles={bubbles as ImageMapBubble[]}
+              onBubbleClick={onBubbleClick}
+              onMapClick={isLatest && user ? onMapPick : undefined}
+              highlightMarker={highlightMarker}
+              onBasemapReady={onBasemapReady}
+            />
+          ) : (
+            <CampusMap
+              campusId={campusId}
+              bubbles={bubbles as MapBubble[]}
+              onBubbleClick={onBubbleClick}
+              onMapReady={onGeoMapReady}
+            />
+          )}
+        </div>
+        <MapRevealOverlay
+          phase={
+            revealPhase === 'hidden' ? 'hidden' : revealPhase === 'revealing' ? 'revealing' : 'loading'
+          }
+        />
       </main>
 
       <Timeline
@@ -354,6 +481,10 @@ export function App() {
         isLatest={isLatest}
         posts={posts}
         events={events}
+        eventsTotal={eventsTotal}
+        eventsHasMore={!isLatest && events.length < eventsTotal}
+        eventsLoadingMore={eventsLoadingMore}
+        onLoadMoreEvents={loadMoreHistoryEvents}
         onLocatePost={(p) => {
           if (typeof p.nx === 'number' && typeof p.ny === 'number') {
             setHighlightMarker({ nx: p.nx, ny: p.ny })
@@ -381,6 +512,23 @@ export function App() {
         item={detail}
         onClose={() => setDetail(null)}
         user={user}
+        onRequestLogin={() => setAuthOpen(true)}
+        onPostSocialPatch={(id, patch) => {
+          setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)))
+          setDetail((d) => {
+            if (!d) return d
+            if (d.kind === 'post' && d.data.id === id) {
+              return { ...d, data: { ...d.data, ...patch } }
+            }
+            if (d.kind === 'post_stack') {
+              return {
+                ...d,
+                posts: d.posts.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+              }
+            }
+            return d
+          })
+        }}
         onDeletePost={async (id) => {
           await adminDeletePost(id)
           setDetail(null)
@@ -400,9 +548,17 @@ export function App() {
       <SettingsModal
         open={settingsOpen}
         user={user}
+        campusId={campusId}
         onClose={() => setSettingsOpen(false)}
         onUpdated={(u) => setUser(u)}
         onAuditChanged={refetchPostsInWindow}
+        onOpenSavedPost={(p) => {
+          setDetail({ kind: 'post', data: p })
+          if (typeof p.nx === 'number' && typeof p.ny === 'number') {
+            setHighlightMarker({ nx: p.nx, ny: p.ny })
+            window.setTimeout(() => setHighlightMarker(null), 3000)
+          }
+        }}
       />
 
       <ComposePostModal

@@ -17,13 +17,33 @@ type ImageMapCanvasProps = {
 /** 最大放大倍数 */
 const MAX_SCALE = 6
 /** 最小缩放 = 适配视口后的比例，不允许再缩小（略留 1% 余量避免浮点抖动） */
-const MIN_SCALE_SLACK = 0.995
-const DRAG_THRESHOLD = 6
+const MIN_SCALE_SLACK = 0.4 /* 允许更大幅度的缩放 */
 /** 归一化宽高低于此视为误触，不生成框 */
 const MIN_NORM_SIDE = 0.004
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.min(hi, Math.max(lo, n))
+}
+
+/** 指针在屏幕上的位移 → 视口布局坐标系下的位移（抵消祖先 transform: scale 等与 tx/ty 不一致的因子） */
+function viewportClientDeltaToLayout(vp: HTMLElement, dClientX: number, dClientY: number) {
+  const rect = vp.getBoundingClientRect()
+  const ow = vp.offsetWidth || 1
+  const oh = vp.offsetHeight || 1
+  const sx = rect.width / ow || 1
+  const sy = rect.height / oh || 1
+  return { dx: dClientX / sx, dy: dClientY / sy }
+}
+
+/** client 坐标 → 视口内与 clientWidth/clientHeight、tx/ty 一致的布局坐标 */
+function clientPointToViewportLayout(vp: HTMLElement, clientX: number, clientY: number) {
+  const rect = vp.getBoundingClientRect()
+  const rw = rect.width || 1
+  const rh = rect.height || 1
+  return {
+    cx: ((clientX - rect.left) * vp.clientWidth) / rw,
+    cy: ((clientY - rect.top) * vp.clientHeight) / rh,
+  }
 }
 
 export function ImageMapCanvas({
@@ -44,7 +64,14 @@ export function ImageMapCanvas({
   const [tx, setTx] = useState(0)
   const [ty, setTy] = useState(0)
 
-  const drag = useRef({ active: false, moved: false, px: 0, py: 0, startTx: 0, startTy: 0 })
+  const drag = useRef({
+    active: false,
+    moved: false,
+    originClientX: 0,
+    originClientY: 0,
+    originTx: 0,
+    originTy: 0,
+  })
   const rubberActive = useRef(false)
   const rubberDraft = useRef<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
   const [rubberVisual, setRubberVisual] = useState<{
@@ -55,6 +82,12 @@ export function ImageMapCanvas({
   } | null>(null)
 
   const minFitScaleRef = useRef(0.2)
+  /** 与 scale/tx/ty 同步，供滚轮连续事件在重绘前读取最新变换（避免锚点漂移） */
+  const transformRef = useRef({ tx: 0, ty: 0, scale: 1 })
+
+  useLayoutEffect(() => {
+    transformRef.current = { tx, ty, scale }
+  }, [tx, ty, scale])
 
   const fitToViewport = useCallback((nw: number, nh: number) => {
     const vp = viewportRef.current
@@ -63,9 +96,12 @@ export function ImageMapCanvas({
     const hr = vp.clientHeight / nh
     const s = Math.min(wr, hr, 1) * 0.88
     minFitScaleRef.current = s
+    const ntx = vp.clientWidth / 2 - (nw / 2) * s
+    const nty = vp.clientHeight / 2 - (nh / 2) * s
+    transformRef.current = { tx: ntx, ty: nty, scale: s }
     setScale(s)
-    setTx((vp.clientWidth - nw * s) / 2)
-    setTy((vp.clientHeight - nh * s) / 2)
+    setTx(ntx)
+    setTy(nty)
   }, [])
 
   useEffect(() => {
@@ -109,16 +145,24 @@ export function ImageMapCanvas({
   useEffect(() => {
     if (!panTo || natural.w <= 1 || natural.h <= 1 || !viewportRef.current) return
     const vp = viewportRef.current
-    const cx = vp.clientWidth / 2
-    const cy = vp.clientHeight / 2
     const wx = panTo.nx * natural.w
     const wy = panTo.ny * natural.h
-    setTx(cx - wx * scale)
-    setTy(cy - wy * scale)
+    
+    // 目标点居中公式：tx + wx * scale = vp.width / 2
+    // => tx = vp.width/2 - wx * scale
+    const ntx = vp.clientWidth / 2 - wx * scale
+    const nty = vp.clientHeight / 2 - wy * scale
+    transformRef.current = { ...transformRef.current, tx: ntx, ty: nty }
+    setTx(ntx)
+    setTy(nty)
   }, [panTo, natural.w, natural.h, scale])
 
   const screenToWorld = useCallback(
     (cx: number, cy: number) => {
+      // 在「先平移，后缩放」的模型下：screen = (world * s) + tx   <-- 这是错的，应该是 translate(tx, ty) scale(s)
+      // 实际上 CSS transform: translate(tx, ty) scale(s) 的含义是：
+      // 视觉位置 = tx + (world_coord * s)
+      // 因此：world_coord = (视觉位置 - tx) / s
       const wx = (cx - tx) / scale
       const wy = (cy - ty) / scale
       return { wx, wy }
@@ -126,8 +170,8 @@ export function ImageMapCanvas({
     [scale, tx, ty],
   )
 
-  /** 框选模式：不可在标记/热区上起笔 */
-  const isRubberBlockingTarget = (el: HTMLElement | null) => {
+  /** 浏览平移：帖子气泡、图钉、以及标注热区拦截，防止拖动画布与点击冲突 */
+  const isPanBlockingTarget = (el: HTMLElement | null) => {
     if (!el) return false
     return Boolean(
       el.closest('.image-map-marker') ||
@@ -136,8 +180,8 @@ export function ImageMapCanvas({
     )
   }
 
-  /** 浏览平移：帖子气泡、图钉、以及标注热区拦截，防止拖动画布与点击冲突 */
-  const isPanBlockingTarget = (el: HTMLElement | null) => {
+  /** 框选模式：防止在热区上起笔 */
+  const isRubberBlockingTarget = (el: HTMLElement | null) => {
     if (!el) return false
     return Boolean(
       el.closest('.image-map-marker') ||
@@ -150,18 +194,27 @@ export function ImageMapCanvas({
     e.preventDefault()
     const vp = viewportRef.current
     if (!vp) return
-    const rect = vp.getBoundingClientRect()
-    const cx = e.clientX - rect.left
-    const cy = e.clientY - rect.top
-    const factor = e.deltaY > 0 ? 0.94 : 1.06
+
+    const { cx: mouseX, cy: mouseY } = clientPointToViewportLayout(vp, e.clientX, e.clientY)
+
+    const { tx: curTx, ty: curTy, scale: curScale } = transformRef.current
+
+    const factor = e.deltaY > 0 ? 0.9 : 1.11
     const floor = minFitScaleRef.current * MIN_SCALE_SLACK
-    const newScale = Math.min(MAX_SCALE, Math.max(floor, scale * factor))
-    const { wx, wy } = screenToWorld(cx, cy)
-    const newTx = cx - wx * newScale
-    const newTy = cy - wy * newScale
-    setScale(newScale)
-    setTx(newTx)
-    setTy(newTy)
+    const nextScale = Math.min(MAX_SCALE, Math.max(floor, curScale * factor))
+
+    if (nextScale === curScale) return
+
+    // 经典缩放锚点：视口布局点 (mouseX,mouseY) 下世界坐标不变
+    const wx = (mouseX - curTx) / curScale
+    const wy = (mouseY - curTy) / curScale
+    const nextTx = mouseX - wx * nextScale
+    const nextTy = mouseY - wy * nextScale
+
+    transformRef.current = { tx: nextTx, ty: nextTy, scale: nextScale }
+    setScale(nextScale)
+    setTx(nextTx)
+    setTy(nextTy)
   }
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -172,9 +225,7 @@ export function ImageMapCanvas({
       if (isRubberBlockingTarget(t)) return
       const vp = viewportRef.current
       if (!vp) return
-      const rect = vp.getBoundingClientRect()
-      const cx = e.clientX - rect.left
-      const cy = e.clientY - rect.top
+      const { cx, cy } = clientPointToViewportLayout(vp, e.clientX, e.clientY)
       let { wx, wy } = screenToWorld(cx, cy)
       wx = clamp(wx, 0, natural.w)
       wy = clamp(wy, 0, natural.h)
@@ -188,13 +239,14 @@ export function ImageMapCanvas({
     if (isPanBlockingTarget(t)) return
 
     viewportRef.current?.setPointerCapture(e.pointerId)
+    const tf = transformRef.current
     drag.current = {
       active: true,
       moved: false,
-      px: e.clientX,
-      py: e.clientY,
-      startTx: tx,
-      startTy: ty,
+      originClientX: e.clientX,
+      originClientY: e.clientY,
+      originTx: tf.tx,
+      originTy: tf.ty,
     }
   }
 
@@ -202,9 +254,7 @@ export function ImageMapCanvas({
     if (rubberActive.current && rubberDraft.current) {
       const vp = viewportRef.current
       if (!vp) return
-      const rect = vp.getBoundingClientRect()
-      const cx = e.clientX - rect.left
-      const cy = e.clientY - rect.top
+      const { cx, cy } = clientPointToViewportLayout(vp, e.clientX, e.clientY)
       let { wx, wy } = screenToWorld(cx, cy)
       wx = clamp(wx, 0, natural.w)
       wy = clamp(wy, 0, natural.h)
@@ -214,14 +264,21 @@ export function ImageMapCanvas({
     }
 
     if (!drag.current.active) return
-    const dx = e.clientX - drag.current.px
-    const dy = e.clientY - drag.current.py
-    const dist = Math.hypot(dx, dy)
-    if (dist > DRAG_THRESHOLD) {
-      if (!drag.current.moved) drag.current.moved = true
+    const d = drag.current
+    const vp = viewportRef.current
+    if (!vp) return
+    const dx = e.clientX - d.originClientX
+    const dy = e.clientY - d.originClientY
+    const { dx: dxL, dy: dyL } = viewportClientDeltaToLayout(vp, dx, dy)
+
+    if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+      d.moved = true
+      const ntx = d.originTx + dxL
+      const nty = d.originTy + dyL
+      transformRef.current = { ...transformRef.current, tx: ntx, ty: nty }
+      setTx(ntx)
+      setTy(nty)
     }
-    setTx(drag.current.startTx + dx)
-    setTy(drag.current.startTy + dy)
   }
 
   const onPointerUp = (e: React.PointerEvent) => {
@@ -229,26 +286,17 @@ export function ImageMapCanvas({
       rubberActive.current = false
       try {
         viewportRef.current?.releasePointerCapture(e.pointerId)
-      } catch {
-        /* noop */
-      }
+      } catch { /* noop */ }
       const d = rubberDraft.current
       rubberDraft.current = null
       setRubberVisual(null)
       if (d && onRubberBandComplete && natural.w > 0 && natural.h > 0) {
         const xl = Math.min(d.x0, d.x1)
-        const xr = Math.max(d.x0, d.x1)
         const yt = Math.min(d.y0, d.y1)
-        const yb = Math.max(d.y0, d.y1)
-        const nw = (xr - xl) / natural.w
-        const nh = (yb - yt) / natural.h
+        const nw = Math.abs(d.x1 - d.x0) / natural.w
+        const nh = Math.abs(d.y1 - d.y0) / natural.h
         if (nw >= MIN_NORM_SIDE && nh >= MIN_NORM_SIDE) {
-          onRubberBandComplete({
-            nx: xl / natural.w,
-            ny: yt / natural.h,
-            nw,
-            nh,
-          })
+          onRubberBandComplete({ nx: xl / natural.w, ny: yt / natural.h, nw, nh })
         }
       }
       return
@@ -258,9 +306,7 @@ export function ImageMapCanvas({
     drag.current.active = false
     try {
       viewportRef.current?.releasePointerCapture(e.pointerId)
-    } catch {
-      /* noop */
-    }
+    } catch { /* noop */ }
   }
 
   const rb = rubberVisual
@@ -288,9 +334,11 @@ export function ImageMapCanvas({
         ref={worldRef}
         className="image-map-world"
         style={{
-          width: natural.w * scale,
-          height: natural.h * scale,
-          transform: `translate(${tx}px, ${ty}px)`,
+          width: natural.w,
+          height: natural.h,
+          // matrix(s,0,0,s,tx,ty)：x' = s*x+tx，与 screenToWorld / 滚轮锚点公式一致，避免部分浏览器对 translate+scale 顺序差异
+          transform: `matrix(${scale}, 0, 0, ${scale}, ${tx}, ${ty})`,
+          transformOrigin: '0 0',
           ['--map-scale' as string]: String(scale),
         }}
       >

@@ -9,6 +9,11 @@ type MemoryDrawerProps = {
   isLatest: boolean
   posts: AlumniPost[]
   events: CampusEvent[]
+  /** 校史模式下 API 返回的总条数（用于角标与分页） */
+  eventsTotal?: number
+  eventsHasMore?: boolean
+  eventsLoadingMore?: boolean
+  onLoadMoreEvents?: () => void
   onLocatePost: (post: AlumniPost) => void
   onLocateEvent: (event: CampusEvent) => void
   onOpenEvent: (event: CampusEvent) => void
@@ -155,6 +160,10 @@ export function MemoryDrawer({
   isLatest,
   posts,
   events,
+  eventsTotal: eventsTotalProp,
+  eventsHasMore = false,
+  eventsLoadingMore = false,
+  onLoadMoreEvents,
   onLocatePost,
   onLocateEvent,
   onOpenEvent,
@@ -181,7 +190,8 @@ export function MemoryDrawer({
 
   const postsCount = posts.length
   const noImgCount = posts.filter((p) => !p.imageUrl?.trim()).length
-  const eventsCount = events.length
+  const eventsTotal = eventsTotalProp ?? events.length
+  const eventsCount = eventsTotal
 
   return (
     <>
@@ -272,17 +282,36 @@ export function MemoryDrawer({
               {events.length === 0 ? (
                 <p className="mem-drawer__empty">该时间段暂无校史记录</p>
               ) : (
-                events.map((e) => (
-                  <EventCard
-                    key={e.id}
-                    event={e}
-                    onLocate={() => {
-                      onLocateEvent(e)
-                      setOpen(false)
-                    }}
-                    onOpen={() => onOpenEvent(e)}
-                  />
-                ))
+                <>
+                  {events.map((e) => (
+                    <EventCard
+                      key={e.id}
+                      event={e}
+                      onLocate={() => {
+                        onLocateEvent(e)
+                        setOpen(false)
+                      }}
+                      onOpen={() => onOpenEvent(e)}
+                    />
+                  ))}
+                  {eventsHasMore && onLoadMoreEvents && (
+                    <div className="mem-drawer__load-more">
+                      <button
+                        type="button"
+                        className="mem-drawer__load-more-btn"
+                        disabled={eventsLoadingMore}
+                        onClick={() => onLoadMoreEvents()}
+                      >
+                        {eventsLoadingMore
+                          ? '加载中…'
+                          : `加载更多（已显示 ${events.length} / ${eventsTotal}）`}
+                      </button>
+                    </div>
+                  )}
+                  {!eventsHasMore && eventsTotal > 50 && events.length >= eventsTotal ? (
+                    <p className="mem-drawer__list-end">已加载全部 {eventsTotal} 条校史</p>
+                  ) : null}
+                </>
               )}
             </>
           )}

@@ -65,6 +65,33 @@ class AlumniPost(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class PostLike(SQLModel, table=True):
+    __tablename__ = "post_like"
+
+    user_id: uuid.UUID = Field(foreign_key="app_user.id", primary_key=True)
+    post_id: uuid.UUID = Field(foreign_key="alumnipost.id", primary_key=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PostFavorite(SQLModel, table=True):
+    __tablename__ = "post_favorite"
+
+    user_id: uuid.UUID = Field(foreign_key="app_user.id", primary_key=True)
+    post_id: uuid.UUID = Field(foreign_key="alumnipost.id", primary_key=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PostComment(SQLModel, table=True):
+    __tablename__ = "post_comment"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    post_id: uuid.UUID = Field(foreign_key="alumnipost.id", index=True)
+    user_id: uuid.UUID = Field(foreign_key="app_user.id", index=True)
+    parent_id: Optional[uuid.UUID] = Field(default=None, foreign_key="post_comment.id", index=True)
+    body: str = Field(sa_column=Column(Text))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 # Fixed dimension for migrations; must match EMBEDDING_DIMENSION / SiliconFlow model
 VECTOR_DIM = 1024
 
