@@ -30,6 +30,7 @@ sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin d
 # Node.js 20（用于构建前端）
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
+node --version
 
 # 当前用户免 sudo 使用 docker（重新登录生效）
 sudo usermod -aG docker $USER
@@ -89,7 +90,10 @@ test -f /opt/Lychee_Memoir/frontend/dist/index.html
 发布到 Nginx 目录：
 
 ```bash
-test -n "$(ls -A /opt/Lychee_Memoir/frontend/dist)" || (echo "Error: dist directory is empty, please check the build output above" >&2 && exit 1)
+if [ -z "$(ls -A /opt/Lychee_Memoir/frontend/dist)" ]; then
+  echo "Error: dist directory is empty, please check the build output above" >&2
+  exit 1
+fi
 sudo mkdir -p /var/www/szu-memoir
 sudo rsync -av --delete /opt/Lychee_Memoir/frontend/dist/ /var/www/szu-memoir/
 ```
