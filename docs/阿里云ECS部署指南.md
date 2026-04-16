@@ -84,7 +84,6 @@ cd /opt/Lychee_Memoir/frontend
 # 本仓库已提交 package-lock.json，优先用 npm ci；若锁文件缺失再改用 npm install
 npm ci
 npm run build
-test -f /opt/Lychee_Memoir/frontend/dist/index.html
 ```
 
 发布到 Nginx 目录：
