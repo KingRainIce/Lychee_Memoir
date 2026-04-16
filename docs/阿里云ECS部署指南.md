@@ -52,7 +52,7 @@ cd /opt/Lychee_Memoir
 cp /opt/Lychee_Memoir/.env.production.example /opt/Lychee_Memoir/.env
 ```
 
-⚠️ **不要直接启动服务**。先打开 `/opt/Lychee_Memoir/.env`，把所有占位值改成你自己的安全值后再执行 `docker compose up`。
+⚠️ **不要直接启动服务**。先打开 `/opt/Lychee_Memoir/.env`，把所有占位值改成你自己的安全值后再执行 `docker compose up -d --build db api`。
 
 必须修改：
 
@@ -88,7 +88,7 @@ test -f /opt/Lychee_Memoir/frontend/dist/index.html
 发布到 Nginx 目录：
 
 ```bash
-test -n "$(ls -A /opt/Lychee_Memoir/frontend/dist)"  # 确认 dist 非空
+test -n "$(ls -A /opt/Lychee_Memoir/frontend/dist)" || (echo "Error: dist directory is empty" && exit 1)
 sudo mkdir -p /var/www/szu-memoir
 sudo rsync -av --delete /opt/Lychee_Memoir/frontend/dist/ /var/www/szu-memoir/
 ```
