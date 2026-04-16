@@ -50,6 +50,8 @@ cd /opt/Lychee_Memoir
 cp /opt/Lychee_Memoir/.env.production.example /opt/Lychee_Memoir/.env
 ```
 
+⚠️ **不要直接启动服务**。先打开 `/opt/Lychee_Memoir/.env`，把所有占位值改成你自己的安全值后再执行 `docker compose up`。
+
 必须修改：
 
 - `JWT_SECRET`：改成强随机字符串
@@ -93,7 +95,7 @@ sudo rsync -av --delete /opt/Lychee_Memoir/frontend/dist/ /var/www/szu-memoir/
 
 ```bash
 sudo cp /opt/Lychee_Memoir/deploy/nginx/szu-memoir.conf /etc/nginx/sites-available/szu-memoir.conf
-sudo sed -i 's/__SERVER_NAME__/你的域名/g' /etc/nginx/sites-available/szu-memoir.conf
+sudo sed -i 's/__SERVER_NAME__/example.com/g' /etc/nginx/sites-available/szu-memoir.conf
 sudo ln -sf /etc/nginx/sites-available/szu-memoir.conf /etc/nginx/sites-enabled/szu-memoir.conf
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
@@ -104,7 +106,7 @@ sudo systemctl reload nginx
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d 你的域名
+sudo certbot --nginx -d example.com
 ```
 
 按提示完成后，Certbot 会自动写入证书与 80->443 跳转规则。
