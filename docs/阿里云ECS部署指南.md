@@ -56,7 +56,7 @@ cp /opt/Lychee_Memoir/.env.production.example /opt/Lychee_Memoir/.env
 
 必须修改：
 
-- `JWT_SECRET`：改成强随机字符串
+- `JWT_SECRET`：改成至少 32 字符的强随机字符串
 - `INIT_ADMIN_EMAIL`、`INIT_ADMIN_PASSWORD`：改默认管理员
 - `SILICONFLOW_API_KEY`：如需 RAG 功能
 
@@ -88,7 +88,7 @@ test -f /opt/Lychee_Memoir/frontend/dist/index.html
 发布到 Nginx 目录：
 
 ```bash
-test -n "$(ls -A /opt/Lychee_Memoir/frontend/dist)" || (echo "Error: dist directory is empty" && exit 1)
+test -n "$(ls -A /opt/Lychee_Memoir/frontend/dist)" || (echo "Error: dist directory is empty, please check the build output above" && exit 1)
 sudo mkdir -p /var/www/szu-memoir
 sudo rsync -av --delete /opt/Lychee_Memoir/frontend/dist/ /var/www/szu-memoir/
 ```
