@@ -85,6 +85,7 @@ npm run build
 发布到 Nginx 目录：
 
 ```bash
+test -n "$(ls -A /opt/Lychee_Memoir/frontend/dist)"  # 确认 dist 非空
 sudo mkdir -p /var/www/szu-memoir
 sudo rsync -av --delete /opt/Lychee_Memoir/frontend/dist/ /var/www/szu-memoir/
 ```
@@ -135,7 +136,9 @@ sudo systemctl enable nginx
 cd /opt/Lychee_Memoir
 git pull
 docker compose up -d --build db api
-cd frontend && npm ci && npm run build
+cd frontend
+npm ci
+npm run build
 sudo rsync -av --delete /opt/Lychee_Memoir/frontend/dist/ /var/www/szu-memoir/
 sudo systemctl reload nginx
 ```
