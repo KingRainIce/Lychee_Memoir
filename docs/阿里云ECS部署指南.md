@@ -33,6 +33,8 @@ sudo apt install -y nodejs
 
 # 当前用户免 sudo 使用 docker（重新登录生效）
 sudo usermod -aG docker $USER
+# 可不重登，立即生效：
+newgrp docker
 ```
 
 ## 2. 拉取项目与生产环境变量
@@ -80,6 +82,7 @@ curl http://127.0.0.1:8000/docs
 cd /opt/Lychee_Memoir/frontend
 npm ci
 npm run build
+test -f /opt/Lychee_Memoir/frontend/dist/index.html
 ```
 
 发布到 Nginx 目录：
