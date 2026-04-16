@@ -80,6 +80,7 @@ curl http://127.0.0.1:8000/docs
 
 ```bash
 cd /opt/Lychee_Memoir/frontend
+# 本仓库已提交 package-lock.json，优先用 npm ci；若锁文件缺失再改用 npm install
 npm ci
 npm run build
 test -f /opt/Lychee_Memoir/frontend/dist/index.html
@@ -88,7 +89,7 @@ test -f /opt/Lychee_Memoir/frontend/dist/index.html
 发布到 Nginx 目录：
 
 ```bash
-test -n "$(ls -A /opt/Lychee_Memoir/frontend/dist)" || (echo "Error: dist directory is empty, please check the build output above" && exit 1)
+test -n "$(ls -A /opt/Lychee_Memoir/frontend/dist)" || (echo "Error: dist directory is empty, please check the build output above" >&2 && exit 1)
 sudo mkdir -p /var/www/szu-memoir
 sudo rsync -av --delete /opt/Lychee_Memoir/frontend/dist/ /var/www/szu-memoir/
 ```
